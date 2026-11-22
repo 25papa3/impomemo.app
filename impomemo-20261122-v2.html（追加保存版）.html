@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>重要事項メモ（オフライン・暗号化）</title>
+<style>
+  body{font-family:sans-serif;max-width:720px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+  h1{font-size:22px} h2{font-size:18px;margin-top:28px}
+  input,select,textarea,button{font-size:17px;padding:10px;margin:4px 0;width:100%;box-sizing:border-box}
+  button{cursor:pointer;background:#2456a6;color:#fff;border:0;border-radius:6px}
+  button.secondary{background:#666} button.danger{background:#a62b2b}
+  .item{border:1px solid #ccc;border-radius:8px;padding:12px;margin:10px 0}
+  .item .kind{color:#555;font-size:14px}
+  .row{display:flex;gap:8px}.row button{flex:1}
+  .note{font-size:14px;color:#555;background:#f4f4f4;border-radius:8px;padding:12px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<h1>重要事項メモ</h1>
+<p class="note">このファイルはインターネットと通信しません。データはこの端末のブラウザ内にだけ保存され、パスフレーズで暗号化されます。外に出すときは暗号化されたファイルとして書き出します。パスフレーズを忘れると中身は二度と開けません。パスワードそのものの管理には専用のパスワード管理アプリ（例：Bitwarden）を使ってください。</p>
+
+<!-- ロック画面 -->
+<div id="lockScreen">
+  <h2 id="lockTitle">パスフレーズを入力</h2>
+  <div id="setupBox" class="hidden">
+    <p>はじめて使うので、パスフレーズを決めてください（8文字以上）。</p>
+    <input type="password" id="newPass1" placeholder="パスフレーズ" autocomplete="new-password">
+    <input type="password" id="newPass2" placeholder="パスフレーズ（確認）" autocomplete="new-password">
+    <button id="setupBtn">パスフレーズを決めて始める</button>
+  </div>
+  <div id="unlockBox" class="hidden">
+    <input type="password" id="unlockPass" placeholder="パスフレーズ" autocomplete="current-password">
+    <button id="unlockBtn">開く</button>
+  </div>
+  <p id="lockMsg" style="color:#a62b2b"></p>
+  <p class="note hidden" id="existingNote">この端末には既に保存データがあります。書き出しファイルの取り込みは、パスフレーズで開いたあとの画面から「追加保存」として行えます。今ある登録が上書きで消えることはありません。</p>
+  <div id="lockImportBox">
+  <h2>暗号化ファイルから取り込む</h2>
+  <p class="note">別の端末で書き出した暗号化ファイルがあれば、ここから取り込めます。取り込むときもパスフレーズが必要です。この取り込みは、この端末にまだ保存データが無いときだけ使えます。</p>
+  <input type="file" id="importFile" accept=".json,application/json">
+  <input type="password" id="importPass" placeholder="そのファイルのパスフレーズ" autocomplete="off">
+  <textarea id="importText" rows="3" placeholder="ファイルが選べない場合は、書き出しデータをここに貼り付け"></textarea>
+  <button id="importBtn" class="secondary">暗号化ファイルを取り込む</button>
+  <p id="importMsg" style="color:#a62b2b"></p>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="mainScreen" class="hidden">
+  <div class="row">
+    <button id="exportBtn" class="secondary">暗号化して書き出す</button>
+    <button id="lockBtn" class="secondary">ロックする</button>
+  </div>
+  <div id="exportBox" class="hidden">
+    <p class="note">書き出しデータです。ダウンロードフォルダにファイルが無い場合は、下のボタンでコピーしてメモ帳などに貼り付け、ファイル名の末尾を .json にして保存してください。そのファイルから取り込めます。</p>
+    <textarea id="exportText" rows="4" readonly></textarea>
+    <button id="copyExportBtn" class="secondary">書き出しデータをコピー</button>
+  </div>
+  <h2>暗号化ファイルから取り込む（追加保存）</h2>
+  <p class="note">書き出したファイルを取り込むと、今ある登録は残したまま、ファイルの中身が追加されます。取り込めるのは、この端末と同じパスフレーズで書き出したファイルだけです。重複した場合は、一覧から手作業で削除してください。</p>
+  <input type="file" id="importFile2" accept=".json,application/json">
+  <textarea id="importText2" rows="3" placeholder="ファイルが選べない場合は、書き出しデータをここに貼り付け"></textarea>
+  <button id="importBtn2" class="secondary">取り込んで追加保存する</button>
+  <p id="importMsg2" style="color:#a62b2b"></p>
+  <h2>さがす</h2>
+  <input type="search" id="searchBox" placeholder="名称・内容で検索">
+  <h2 id="formTitle">追加する</h2>
+  <p id="editNotice" class="note hidden"></p>
+  <input id="fTitle" placeholder="名称（例：○○銀行 普通口座）">
+  <select id="fKind">
+    <option>口座番号</option><option>契約番号</option><option>重要書類の保管場所</option>
+    <option>大事な日付</option><option>その他</option>
+  </select>
+  <input id="fDetail" placeholder="番号・内容（その項目の中身：番号、保管場所など）">
+  <textarea id="fMemo" placeholder="メモ（保管場所や連絡先など）" rows="3"></textarea>
+  <button id="addBtn">追加して保存</button>
+  <button id="cancelEditBtn" class="secondary hidden">訂正をやめる</button>
+  <h2>一覧</h2>
+  <div id="list"></div>
+  <h2>パスフレーズの変更</h2>
+  <input type="password" id="chgPass1" placeholder="新しいパスフレーズ" autocomplete="new-password">
+  <input type="password" id="chgPass2" placeholder="新しいパスフレーズ（確認）" autocomplete="new-password">
+  <button id="chgBtn" class="secondary">パスフレーズを変更する</button>
+  <p id="mainMsg" style="color:#a62b2b"></p>
+  <h2>バックアップについて</h2>
+  <p class="note">ブラウザのデータを消去すると、この端末内の保存分も消えます。「暗号化して書き出す」で保存したファイルが実質のバックアップです。書き出したファイルはパスフレーズなしでは読めません。なお、取り込めるのはこのアプリで書き出したファイルだけです。他のアプリや方法で暗号化したファイルは読み込めません。</p>
+</div>
+
+<script>
+"use strict";
+/* 外部通信なし。暗号化: PBKDF2-SHA256 250,000回 + AES-GCM 256bit。保存先: localStorage のみ。 */
+const LS_KEY = "important-matters-vault-v1";
+let vault = null;      // 復号済みの {items:[...]}（メモリ内のみ）
+let passphrase = "";   // メモリ内のみ。保存しない。
+
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64e = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)).buffer;
+
+async function deriveKey(pw, salt) {
+  const base = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt, iterations:250000, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function encryptVault(pw, data) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pw, salt);
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, enc.encode(JSON.stringify(data)));
+  return {v:1, salt:b64e(salt), iv:b64e(iv), data:b64e(ct)};
+}
+async function decryptBlob(pw, blob) {
+  const key = await deriveKey(pw, b64d(blob.salt));
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64d(blob.iv)}, key, b64d(blob.data));
+  return JSON.parse(dec.decode(pt));
+}
+async function persist() {
+  const blob = await encryptVault(passphrase, vault);
+  localStorage.setItem(LS_KEY, JSON.stringify(blob));
+}
+function showMain() { $("lockScreen").classList.add("hidden"); $("mainScreen").classList.remove("hidden"); render(); }
+function lock() {
+  cancelEdit();
+  vault = null; passphrase = "";
+  $("mainScreen").classList.add("hidden"); $("lockScreen").classList.remove("hidden");
+  $("unlockPass").value = ""; initLockScreen();
+}
+function initLockScreen() {
+  const exists = !!localStorage.getItem(LS_KEY);
+  $("setupBox").classList.toggle("hidden", exists);
+  $("unlockBox").classList.toggle("hidden", !exists);
+  $("lockImportBox").classList.toggle("hidden", exists);
+  $("existingNote").classList.toggle("hidden", !exists);
+  $("lockTitle").textContent = exists ? "パスフレーズを入力" : "はじめての設定";
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function render() {
+  const q = ($("searchBox").value||"").trim();
+  const items = vault.items.filter(it => !q || (it.title+it.kind+it.detail+it.memo).includes(q));
+  $("list").innerHTML = items.length ? items.map(it => `
+    <div class="item">
+      <div><strong>${esc(it.title)}</strong> <span class="kind">${esc(it.kind)}</span></div>
+      <div>${esc(it.detail)}</div>
+      ${it.date? `<div>登録日：${esc(it.date)}</div>`:""}
+      ${it.memo? `<div>${esc(it.memo)}</div>`:""}
+      <div class="row"><button data-edit="${it.id}">訂正</button><button class="secondary" data-del="${it.id}">削除</button></div>
+    </div>`).join("") : "<p>まだ登録がありません。</p>";
+  $("list").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => {
+    const it = vault.items.find(x => x.id === b.dataset.edit);
+    if (it) startEdit(it);
+  });
+  $("list").querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    if (!confirm("この項目を削除しますか？")) return;
+    if (editingId === b.dataset.del) cancelEdit();
+    vault.items = vault.items.filter(it => it.id !== b.dataset.del);
+    await persist(); render();
+  });
+}
+let editingId = null;
+function startEdit(it) {
+  editingId = it.id;
+  $("fTitle").value = it.title; $("fKind").value = it.kind;
+  $("fDetail").value = it.detail; $("fMemo").value = it.memo || "";
+  $("formTitle").textContent = "訂正する";
+  $("addBtn").textContent = "訂正して保存";
+  $("editNotice").textContent = "「" + it.title + "」を訂正しています。直したら「訂正して保存」を押してください。登録日は元のまま変わりません。";
+  $("editNotice").classList.remove("hidden");
+  $("cancelEditBtn").classList.remove("hidden");
+  $("mainMsg").textContent = "";
+  $("fTitle").scrollIntoView({behavior:"smooth", block:"center"});
+  $("fTitle").focus();
+}
+function cancelEdit() {
+  editingId = null;
+  ["fTitle","fDetail","fMemo"].forEach(id => $(id).value = "");
+  $("formTitle").textContent = "追加する";
+  $("addBtn").textContent = "追加して保存";
+  $("editNotice").classList.add("hidden");
+  $("cancelEditBtn").classList.add("hidden");
+}
+
+$("setupBtn").onclick = async () => {
+  const p1 = $("newPass1").value, p2 = $("newPass2").value;
+  if (p1.length < 8) return $("lockMsg").textContent = "パスフレーズは8文字以上にしてください。";
+  if (p1 !== p2) return $("lockMsg").textContent = "パスフレーズが一致しません。";
+  passphrase = p1; vault = {items:[]};
+  await persist(); $("lockMsg").textContent = ""; showMain();
+};
+$("unlockBtn").onclick = async () => {
+  try {
+    const blob = JSON.parse(localStorage.getItem(LS_KEY));
+    vault = await decryptBlob($("unlockPass").value, blob);
+    if (!Array.isArray(vault.items)) throw new Error("bad vault");
+    passphrase = $("unlockPass").value; $("lockMsg").textContent = ""; showMain();
+  } catch(e) { $("lockMsg").textContent = "パスフレーズが違うか、ファイルが壊れています。"; }
+};
+$("addBtn").onclick = async () => {
+  const title = $("fTitle").value.trim();
+  if (!title) return $("mainMsg").textContent = "名称を入力してください。";
+  if (editingId) {
+    const it = vault.items.find(x => x.id === editingId);
+    if (it) {
+      it.title = title; it.kind = $("fKind").value;
+      it.detail = $("fDetail").value.trim(); it.memo = $("fMemo").value.trim();
+    }
+    cancelEdit();
+    await persist(); $("mainMsg").textContent = "訂正を保存しました。"; render();
+    return;
+  }
+  vault.items.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    title, kind:$("fKind").value, detail:$("fDetail").value.trim(),
+    date:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")})(), memo:$("fMemo").value.trim()});
+  ["fTitle","fDetail","fMemo"].forEach(id => $(id).value = "");
+  await persist(); $("mainMsg").textContent = ""; render();
+};
+$("cancelEditBtn").onclick = () => { cancelEdit(); $("mainMsg").textContent = ""; };
+$("searchBox").oninput = render;
+$("lockBtn").onclick = lock;
+$("exportBtn").onclick = async () => {
+  const blob = await encryptVault(passphrase, vault);
+  const text = JSON.stringify(blob);
+  const d = new Date(), pad = n => String(n).padStart(2,"0");
+  const name = `important-matters-encrypted-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+  const file = new File([text], name, {type:"application/json"});
+  if (navigator.canShare && navigator.canShare({files:[file]})) {
+    try { await navigator.share({files:[file]}); $("mainMsg").textContent = "共有画面で保存先（ファイル、ドライブなど）を選んでください。"; return; }
+    catch(e) { if (e && e.name === "AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:"application/json"}));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  $("exportText").value = text;
+  $("exportBox").classList.remove("hidden");
+  $("mainMsg").textContent = "ダウンロードを開始しました。フォルダに無い場合は、下の書き出しデータをコピーして保存してください。";
+};
+$("copyExportBtn").onclick = async () => {
+  $("exportText").select();
+  try { await navigator.clipboard.writeText($("exportText").value); }
+  catch(e) { document.execCommand("copy"); }
+  $("mainMsg").textContent = "書き出しデータをコピーしました。";
+};
+$("importBtn").onclick = async () => {
+  const msg = t => { $("importMsg").textContent = t; $("lockMsg").textContent = t; };
+  if (localStorage.getItem(LS_KEY)) return msg("この端末には既に保存データがあります。パスフレーズで開いてから、開いたあとの画面で取り込んでください。");
+  const f = $("importFile").files && $("importFile").files[0];
+  const pasted = $("importText").value.trim();
+  if (!f && !pasted) return msg("ファイルを選ぶか、書き出しデータを貼り付けてください。");
+  try {
+    const blob = JSON.parse(f ? await f.text() : pasted);
+    const data = await decryptBlob($("importPass").value, blob);
+    if (!Array.isArray(data.items)) throw new Error("bad vault");
+    passphrase = $("importPass").value; vault = data; await persist();
+    msg(""); showMain();
+  } catch(e) { msg("取り込めませんでした。パスフレーズかデータを確認してください。"); }
+};
+$("importBtn2").onclick = async () => {
+  const f = $("importFile2").files && $("importFile2").files[0];
+  const pasted = $("importText2").value.trim();
+  if (!f && !pasted) return $("importMsg2").textContent = "ファイルを選ぶか、書き出しデータを貼り付けてください。";
+  try {
+    const blob = JSON.parse(f ? await f.text() : pasted);
+    const data = await decryptBlob(passphrase, blob);
+    if (!Array.isArray(data.items)) throw new Error("bad vault");
+    const stamp = Date.now().toString(36);
+    const added = data.items.map((it, i) => ({
+      id: stamp + i.toString(36) + Math.random().toString(36).slice(2,6),
+      title: String(it.title ?? ""), kind: String(it.kind ?? "その他"),
+      detail: String(it.detail ?? ""), date: String(it.date ?? ""), memo: String(it.memo ?? "")
+    })).filter(it => it.title);
+    if (!added.length) return $("importMsg2").textContent = "追加できる項目がありませんでした。";
+    vault.items = vault.items.concat(added);
+    await persist();
+    $("importMsg2").textContent = "";
+    $("importText2").value = ""; $("importFile2").value = "";
+    $("mainMsg").textContent = added.length + "件を追加保存しました。今ある登録はそのまま残っています。";
+    render();
+  } catch(e) { $("importMsg2").textContent = "取り込めませんでした。この端末と同じパスフレーズで書き出したファイルか、確認してください。"; }
+};
+$("chgBtn").onclick = async () => {
+  const p1 = $("chgPass1").value, p2 = $("chgPass2").value;
+  if (p1.length < 8) return $("mainMsg").textContent = "パスフレーズは8文字以上にしてください。";
+  if (p1 !== p2) return $("mainMsg").textContent = "パスフレーズが一致しません。";
+  passphrase = p1; await persist();
+  $("chgPass1").value = $("chgPass2").value = "";
+  $("mainMsg").textContent = "パスフレーズを変更しました。書き出しファイルのバックアップも新しいパスフレーズで作り直してください。";
+};
+initLockScreen();
+</script>
+</body>
+</html>
